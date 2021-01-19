@@ -126,9 +126,18 @@ function backup_s3() {
 
     if (( $SST_FAILED == 0 )); then
          FIRST_RECEIVED=0
-         socat -u "$SOCAT_OPTS" stdio  \
-            | xbcloud put --storage=s3 --parallel=10 --md5 --s3-bucket="$S3_BUCKET" "$S3_BUCKET_PATH" 2>&1 \
-            | (grep -v "error: http request failed: Couldn't resolve host name" || exit 1)
+
+         if [ -n "$ENCRYPTION_KEY" ]; then
+             socat -u "$SOCAT_OPTS" stdio  \
+                | xbcrypt -k $ENCRYPTION_KEY -a AES256  \
+                | xbcloud put --storage=s3 --parallel=10 --md5 --s3-bucket="$S3_BUCKET" "$S3_BUCKET_PATH" 2>&1 \
+                | (grep -v "error: http request failed: Couldn't resolve host name" || exit 1)
+         else
+             socat -u "$SOCAT_OPTS" stdio  \
+                | xbcloud put --storage=s3 --parallel=10 --md5 --s3-bucket="$S3_BUCKET" "$S3_BUCKET_PATH" 2>&1 \
+                | (grep -v "error: http request failed: Couldn't resolve host name" || exit 1)
+         fi
+
          FIRST_RECEIVED=1
          echo "Backup finished"
     fi
